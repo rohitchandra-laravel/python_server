@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, Select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.exceptions.user import UserNotFoundError, UserValidationError
@@ -28,6 +28,24 @@ async def create_user(db: AsyncSession, user_data):
     user.posts.append(dummy_post)
 
     db.add(user)
+    await db.commit()
+    await db.refresh(user)
+
+    return user
+
+
+async def update_user(db: AsyncSession, user_id: int, user_data):
+    result = await db.execute(Select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise UserNotFoundError()
+
+    update_data = user_data.model_dump(exclude_unset=True)
+
+    for key, value in update_data.items():
+        setattr(user, key, value)
+
     await db.commit()
     await db.refresh(user)
 
